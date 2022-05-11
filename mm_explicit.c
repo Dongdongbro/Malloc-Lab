@@ -93,7 +93,6 @@ int mm_init(void)
     PUT(heap_listp + (5*WSIZE), PACK(0,1));
     heap_listp += (2*WSIZE); // 초기 bp 값을 설정
     // 빈 Heap을 CHUNKSIZE byte로 확장하고, 초기 가용 블록을 생성해줌
-
     if (extend_heap(CHUNKSIZE/WSIZE) == NULL){
         return -1;
     }
@@ -171,15 +170,12 @@ void mm_free(void *bp)
     coalesce : 블록을 연결하는 함수
 */
 static void *coalesce(void *bp){
-
     size_t prev_alloc = GET_ALLOC(FTRP(PREV_BLKP(bp))); // 이전 블록이 할당되었는지 확인 : bp의 포인터를 통해 이전 블록을 찾고, 이 이전블록의 footer를 통해 할당 여부를 확인한다.
     size_t next_alloc = GET_ALLOC(HDRP(NEXT_BLKP(bp))); // 다음 블록이 할당되었는지 확인 : bp의 포인터를 통해 다음 블록을 찾고, 이 다음블록의 header를 통해 할당 여부를 확인한다.
     size_t size = GET_SIZE(HDRP(bp)); // 현재 블록의 사이즈 확인
     // case 1 : 이전 블록과 다음 블록이 모두 할당된 케이스 -> 합칠 수 없음
     if (prev_alloc && next_alloc){
-        printf("되냐?\n");
         list_add(bp);
-        printf("되냐?\n");
         return bp;
     }
     // case 2 : 이전 블록 : 할당 상태, 다음 블록 : 가용 상태 -> 다음 블록과 합침
@@ -239,36 +235,12 @@ static void place(void *bp, size_t asize){
 }
 
 static void list_add(void *bp){
-    void *i = bp;
-    for (i; i != (char *)heap_listp ; i = PREV_BLKP(i)) {
-        if(!GET_ALLOC(HDRP(i))){
-            SUCC_BLKP(bp) = SUCC_BLKP(i);
-            PRED_BLKP(bp) = i;
-            PRED_BLKP(SUCC_BLKP(i)) = bp;
-            SUCC_BLKP(i) = bp;
-            return;
-        }
-    }
-    SUCC_BLKP(bp) = SUCC_BLKP(heap_listp);
-    PRED_BLKP(bp) = heap_listp;
-    PRED_BLKP(SUCC_BLKP(heap_listp)) = bp;
-    SUCC_BLKP(heap_listp) = bp;
-    return;
-    // SUCC_BLKP(bp) = SUCC_BLKP(heap_listp);  // 추가하는 bp의 SUCC는 root가 가르키고 있던 SUCC로 받아와준다.
-    // PRED_BLKP(bp) = heap_listp;             // 추가하는 bp의 PRED는 root를 가르키게 한다.
-    // PRED_BLKP(SUCC_BLKP(heap_listp)) = bp;  // 원래 root가 갖고 있던 SUCC 블록포인터의 PRED를 bp로 만들어준다.
-    // SUCC_BLKP(heap_listp) = bp;             // root의 SUCC를 bp로 업데이트 시킨다.
+    SUCC_BLKP(bp) = SUCC_BLKP(heap_listp);  // 추가하는 bp의 SUCC는 root가 가르키고 있던 SUCC로 받아와준다.
+    PRED_BLKP(bp) = heap_listp;             // 추가하는 bp의 PRED는 root를 가르키게 한다.
+    PRED_BLKP(SUCC_BLKP(heap_listp)) = bp;  // 원래 root가 갖고 있던 SUCC 블록포인터의 PRED를 bp로 만들어준다.
+    SUCC_BLKP(heap_listp) = bp;             // root의 SUCC를 bp로 업데이트 시킨다.
 }
-// static void *find_fit(size_t asize){
-//     void *bp;
-//     for (bp = (char *)heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)){
-//         // for문이 계속 돌면 epliogue header까지 간다. epliogue header는 0이므로 끝까지 가면 종료됨
-//         if (!GET_ALLOC(HDRP(bp)) && (asize <= GET_SIZE(HDRP(bp)))){ // 이 블록이 가용상태이고, 내가 갖고있는 asize를 담을 수 있다면
-//             return bp; // 내가 넣을 수 있는 블록만 찾으면 되기 때문에, 바로 리턴
-//         }
-//     }
-//     return NULL; // NULL 리턴 시, fit에 맞는 block이 없는 것
-// }
+
 static void list_remove(void *bp){
     SUCC_BLKP(PRED_BLKP(bp)) = SUCC_BLKP(bp);   // bp의 PRED의 SUCC를 bp의 SUCC로 설정.
     PRED_BLKP(SUCC_BLKP(bp)) = PRED_BLKP(bp);   // bp의 SUCC의 PRED를 bp의 PRED로 설정.
